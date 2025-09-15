@@ -1,0 +1,11 @@
+{
+  "project_name": "Network-Usage",
+  "version": "1.0.0",
+  "description": "A new project created with spec-kit",
+  "language": "typescript",
+  "framework": "react",
+  "ai_agent": "claude",
+  "specs_directory": "specs",
+  "plans_directory": "plans",
+  "tasks_directory": "tasks"
+}
