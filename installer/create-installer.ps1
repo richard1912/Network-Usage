@@ -72,16 +72,10 @@ try {
     if (-not (Test-Path $IconPath)) {
         Write-Host "Creating default application icon..." -ForegroundColor Yellow
         
-        # Create a simple ICO file for the installer
-        # In a real implementation, this would be a proper icon file
-        # For now, we'll create a placeholder
-        $IconContent = @"
-# Placeholder for application icon
-# In production, this would be a proper .ico file
-# The installer script expects this file to exist
-"@
-        Set-Content -Path $IconPath -Value $IconContent
-        Write-Host "✓ Created placeholder icon" -ForegroundColor Green
+        # Skip icon creation for now - not required for basic installer
+        # In production, a proper .ico file should be provided
+        Write-Host "⚠ Icon file not found. Skipping icon creation." -ForegroundColor Yellow
+        Write-Host "  For production builds, place a proper icon.ico file in the project root" -ForegroundColor Gray
     }
 
     # Step 4: Create installer directory structure
@@ -99,6 +93,7 @@ try {
     
     $InstallerBatch = Join-Path $FullOutputPath "Install-NetworkUsage.bat"
     
+    # Create the batch content with properly expanded variables
     $BatchContent = @"
 @echo off
 setlocal enabledelayedexpansion
@@ -136,7 +131,7 @@ if not exist "!INSTALL_DIR!" (
 REM Copy application files
 echo.
 echo Copying application files...
-xcopy /Y /Q "$BinPath\*" "!INSTALL_DIR!\" >nul
+xcopy /Y /Q "$($BinPath.Replace('\', '\\'))\*" "!INSTALL_DIR!\" >nul
 if errorlevel 1 (
     echo ERROR: Failed to copy application files.
     pause
@@ -200,6 +195,7 @@ pause
     # Step 6: Create PowerShell installer for advanced features
     $PowerShellInstaller = Join-Path $FullOutputPath "Install-NetworkUsage.ps1"
     
+    # Create PowerShell installer with properly expanded variables
     $PowerShellContent = @"
 # Network Usage Monitor PowerShell Installer
 # Provides enhanced installation with registry management and service registration
@@ -412,3 +408,56 @@ finally {
     }
 }
 "@
+    
+    # Write the PowerShell installer to file
+    Set-Content -Path $PowerShellInstaller -Value $PowerShellContent -Encoding UTF8
+    Write-Host "✓ PowerShell installer created: $PowerShellInstaller" -ForegroundColor Green
+
+    # Step 7: Copy application files to installer directory for distribution
+    Write-Host "`n6. Preparing distribution package..." -ForegroundColor Cyan
+    
+    $DistributionPath = Join-Path $FullOutputPath "NetworkUsage"
+    if (Test-Path $DistributionPath) {
+        Remove-Item $DistributionPath -Recurse -Force
+    }
+    New-Item -Path $DistributionPath -ItemType Directory -Force | Out-Null
+    
+    # Copy application files
+    Copy-Item -Path "$BinPath\*" -Destination $DistributionPath -Recurse -Force
+    Write-Host "✓ Application files copied to distribution package" -ForegroundColor Green
+
+    # Step 8: Show completion summary
+    Write-Host "`n" -NoNewline
+    Write-Host "=" * 60 -ForegroundColor Green
+    Write-Host "Installer Creation Summary" -ForegroundColor Green
+    Write-Host "=" * 60 -ForegroundColor Green
+    Write-Host "✓ Application built and published" -ForegroundColor Green
+    Write-Host "✓ Batch installer created: Install-NetworkUsage.bat" -ForegroundColor Green
+    Write-Host "✓ PowerShell installer created: Install-NetworkUsage.ps1" -ForegroundColor Green
+    Write-Host "✓ Distribution package prepared" -ForegroundColor Green
+    Write-Host "`nOutput directory: $FullOutputPath" -ForegroundColor Yellow
+    Write-Host "`nDistribution files:" -ForegroundColor White
+    Write-Host "  - Install-NetworkUsage.bat (Simple batch installer)" -ForegroundColor Gray
+    Write-Host "  - Install-NetworkUsage.ps1 (Advanced PowerShell installer)" -ForegroundColor Gray
+    Write-Host "  - NetworkUsage\ (Application files for manual distribution)" -ForegroundColor Gray
+    Write-Host "`nTo distribute your application:" -ForegroundColor White
+    Write-Host "1. Share the installer files with end users" -ForegroundColor Gray
+    Write-Host "2. Users can run either .bat or .ps1 installer" -ForegroundColor Gray  
+    Write-Host "3. Or manually copy NetworkUsage folder to Program Files" -ForegroundColor Gray
+    Write-Host "=" * 60 -ForegroundColor Green
+    
+    Write-Host "`n✓ Installer creation completed successfully!" -ForegroundColor Green
+}
+catch {
+    Write-Host "`n✗ Error creating installer: $_" -ForegroundColor Red
+    Write-Host "Stack trace: $($_.ScriptStackTrace)" -ForegroundColor Red
+    exit 1
+}
+finally {
+    # Return to original location
+    Set-Location $ProjectRoot
+    
+    if ($Verbose) {
+        Write-Host "`nScript completed at $(Get-Date)" -ForegroundColor Gray
+    }
+}
